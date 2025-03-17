@@ -1,0 +1,76 @@
+// m1/index.js
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Kafka } = require('kafkajs');
+
+const app = express();
+app.use(bodyParser.json());
+
+// Simulamos una base de datos en memoria para usuarios
+let usuarios = [
+  { id: 1, name: 'Usuario1', role: 'usuario' },
+  { id: 2, name: 'Usuario2', role: 'usuario' },
+];
+
+// Configuración de KafkaJS
+const kafka = new Kafka({
+  clientId: 'ms1',
+  brokers: ['localhost:9092'], // Asegúrate que el broker corresponde a la configuración del docker-compose
+});
+const producer = kafka.producer();
+const consumer = kafka.consumer({ groupId: 'ms1-group' });
+
+// Endpoint GET /usuarios: Devuelve la lista de usuarios con rol "usuario"
+app.get('/usuarios', (req, res) => {
+  const usuariosSolo = usuarios.filter(u => u.role === 'usuario');
+  res.json(usuariosSolo);
+});
+
+// Endpoint POST /administrador: Crea o actualiza un registro con rol "administrador"
+app.post('/administrador', async (req, res) => {
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'El campo "name" es requerido' });
+  }
+  
+  // Simulamos la creación de un administrador
+  const newAdmin = { id: usuarios.length + 1, name, role: 'administrador' };
+  usuarios.push(newAdmin);
+
+  // Publicamos un evento en Kafka
+  try {
+    await producer.connect();
+    await producer.send({
+      topic: 'admin-created',
+      messages: [{ value: JSON.stringify(newAdmin) }],
+    });
+    await producer.disconnect();
+  } catch (error) {
+    console.error('Error al publicar en Kafka:', error);
+  }
+
+  res.status(201).json(newAdmin);
+});
+
+// Configuramos un consumidor Kafka (opcional, según la lógica que necesites)
+// Por ejemplo, este consumidor puede escuchar un tópico para procesar mensajes adicionales
+const runConsumer = async () => {
+  try {
+    await consumer.connect();
+    await consumer.subscribe({ topic: 'solicitud-accion', fromBeginning: true });
+    await consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        console.log(`Mensaje recibido en ${topic}: ${message.value.toString()}`);
+        // Aquí podrías procesar el mensaje según tus necesidades
+      },
+    });
+  } catch (error) {
+    console.error('Error en el consumidor Kafka:', error);
+  }
+};
+runConsumer();
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Microservicio 1 corriendo en el puerto ${PORT}`);
+});
