@@ -61,3 +61,7 @@ class KafkaService {
 }
 
 export const kafkaService = new KafkaService();
+
+
+
+// estamos manejando de forma equivocada la conexion y la subscripcion de los eventos
