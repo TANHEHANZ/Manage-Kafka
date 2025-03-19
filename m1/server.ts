@@ -12,7 +12,7 @@ app.use(express.urlencoded({ limit: "1000mb", extended: true }));
 const PORT = process.env.PORT;
 
 app.use("/api", router);
-
+// solo estamos esperando un evento , debemos gestionar mas eventos , buscar la forma correcta
 kafkaService.initialize().then(() => {
   kafkaService.subscribeToTopic("user-action", (data) => {
     console.log("Mensaje recibido:", data);
