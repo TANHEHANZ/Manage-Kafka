@@ -13,6 +13,8 @@ const kafka = new Kafka({
 const producer = kafka.producer();
 const consumer = kafka.consumer({ groupId: "ms2-group" });
 
+//  forma sincrona de manejar servicios 
+
 app.get("/usuarios", async (req, res) => {
   try {
     const response = await axios.get("http://localhost:3001/api/users");
@@ -23,6 +25,7 @@ app.get("/usuarios", async (req, res) => {
   }
 });
 
+//  forma asincrona de manejo de servicios , utilizamos kafka para la mensajeria entre servicios
 app.post("/enviar-solicitud", async (req, res) => {
   try {
     const solicitud = { accion: "procesar-solicitud", data: req.body };
